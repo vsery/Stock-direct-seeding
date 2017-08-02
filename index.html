@@ -1,0 +1,1468 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>红股汇直播室</title>
+        <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0,user-scalable=no">
+        <link rel="stylesheet" href="css/reset.css" />
+        <link rel="stylesheet" href="css/mint-ui.css" />
+        <link rel="stylesheet" href="css/index.css" />
+        <link rel="stylesheet" href="css/swipebox.css" />
+        <link rel="shortcut icon" type="image/x-icon" href="img/index.ico">
+        <script src="js/vue.js"></script>
+        <script type="text/javascript" src="js/axios.js"></script>
+        <script src="js/vue-resource.js"></script>
+        <script src="js/mint-ui.js"></script>
+        <script src="js/es6-promise.auto.min.js"></script>
+        <script type="text/javascript" src="js/jquery-1.7.2.js"></script>
+        <script type="text/javascript" src="js/jquery.swipebox.min.js"></script>
+        <script type="text/javascript" src="js/full_img.js"></script>
+        <script type="text/javascript" src="js/interceptor.js"></script>
+        <script type="text/javascript" src="js/constant.js" ></script>
+        <!-- 统计数据 网站数据分析  -->
+        <script>
+            var _hmt = _hmt || [];
+            (function() {
+              var hm = document.createElement("script");
+              hm.src = "https://hm.baidu.com/hm.js?a451a9ecad60b8de11910d5c031912bd";
+              var s = document.getElementsByTagName("script")[0]; 
+              s.parentNode.insertBefore(hm, s);
+            })();
+        </script>
+    </head>
+    <body class="index_body">
+        <div id="index">
+            <!-- 头部 -->
+            <div class="header">
+                <img class="logo" v-if="!isLogin" src="img/logo.png" alt="" />
+                <img class="logoShort" v-if="isLogin" src="img/logoShort.png" alt="" />
+                <mt-button class="fr" @click="codeLogin" v-if="!isLogin">登录</mt-button>
+                <span v-if="isLogin" class="user-info">
+                    <img :src="avatar" class="user-avatar" />
+                    {{nickname}}
+                    <a @click="editLogin" class="user-edit">退出</a>
+                </span>
+                <!-- <mt-button class="fr" @click="editLogin" v-if="!isLogin">退出</mt-button> -->
+            </div>
+            <!--直播-->
+            <div id="dyyplayer" style="width: 100%;height: 100%;"></div>
+            <!--内容-->
+            <div class="content" :style="{height:cH}">
+                <div class="tabs">
+                    <ul class="tabs-ul">
+                    	<li v-on:click="viewTab('course')" :class="{'curr-tab': courseTab}">课程表</li>
+                        <li v-on:click="viewTab('chat')" :class="{'curr-tab': chatTab}">聊天室</li>
+                        <li v-on:click="viewTab('live')" :class="{'curr-tab': liveTab}">主播厅</li>
+                    </ul>
+                </div>
+                <div class="tabs-con">
+                    <div class="warm" v-if="!showQueTxt">
+                        <img src="img/icon.png" alt="" />
+                        <span>提高风险意识，做好风险防范，合理控制交易仓位</span>
+                    </div>
+                    <!-- 聊天室 -->
+                    <div v-show="chatTab" class="tab-content tab-content-chat" id="myData" :style="{height:hH}">
+                        <div class="more">
+                            <div class="chat-content" v-for="item in chatList2">
+                                <!-- 聊天消息 -->
+                                <template v-if="item.giftId==null && item.userId != null">
+                                    <div class="detail fl b-chat" id="detai">
+                                        <p class="title" v-if="userId == item.userId" style="color: #ff3b2f;">{{item.userName}}：
+                                            <!--<span>{{(item.createdAt).substring(10)}}</span>-->
+                                        </p>
+                                        <p class="title" v-if="userId != item.userId">{{item.userName}}：
+                                            <!--<span>{{(item.createdAt).substring(10)}}</span>-->
+                                        </p>
+                                        <p v-html="item.message" v-if="(item.userName).substr(0,4) == '[房管]'" style="color: #f00; font-size: 1.7rem;"></p>
+                                        <p v-html="item.message" v-else style="color:#1a1a1a; font-size: 1.5rem;"></p>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                        <div id="send" class="send"  v-show="!showQueTxt">
+                            <div class="gifts">
+                                <span @click="addGift('鲜花')"><img src="img/icon-flower.png" alt="" /><i>鲜花</i></span>
+                                <span @click="addGift('鼓掌')"><img src="img/icon-clap.png" alt="" /><i>鼓掌</i></span>
+                                <span @click="addGift('点赞')"><img src="img/icon-praise.png" alt="" /><i>点赞</i></span>
+                            </div>
+                            <div class="send-chat">
+                                <div class="send-con">
+                                    <template v-show="isLogin">
+                                        <div v-show="isLogin" id="chatText" class="chatText" contenteditable="true" ></div>
+                                        <button id="sendBtn" v-show="isLogin" :class="hadSend ? 'btn-gray' : 'btn-send'" @click="sendChat" v-html="sendBtnTitle"></button>
+                                    </template>
+                                    <template v-if="!isLogin">
+                                        <div class="warn-login" v-if="!isLogin">
+                                            <a @click="codeLogin">登录</a>发送聊天，参与互动
+                                        </div>
+                                        <button v-if="!isLogin" class="btn-send" @click="sendChat" style="background: #ccc;color: #fff;" disabled="disabled">发送</button>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 主播厅 -->
+                    <div v-show="liveTab" class="tab-content tab-content-live" :style="{height:moreH}">
+                        <div class="more" id="anchorHall">
+                            <div class="live-content" v-for="item in chatList" id="detail">
+                                <span class="dotted"></span>
+                                <div class="info_head">
+                                    <!--<img class="photo fl" :src="item.teacherAvatar" alt="" />-->
+                                    <p class="title">[房管]直播助理
+                                        <span class="fr">{{item.createdAt}}</span>
+                                    </p>
+                                </div>
+                                <div class="detail fl">
+                                    <p v-html="item.message"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                	<!-- 课程表 -->
+                	<div v-show="courseTab" class="tab-content tab-content-course" :style="{height:moreH}">
+                		<table>
+                			<thead>
+	                			<tr>
+	                				<td>时间</td>
+	                				<td>名称</td>
+	                				<td>老师</td>
+	                			</tr>
+                			</thead>
+                			<tbody>
+                				<!--<tr>
+                					<td>9:20-9:50(交易日)</td>
+                					<td>早间速递</td>
+                					<td>李益庆(老庄)</td>
+                				</tr>
+                				<tr>
+                					<td>内容介绍</td>
+                					<td colspan="2">解读盘前重磅信息,集合竞价异动跟踪,发掘当日潜力板块、热点</td>
+                				</tr>-->
+                				<tr>
+                					<td>15:15-15:45(交易日)</td>
+                					<td>盘后视点</td>
+                					<td>张老师</td>
+                				</tr>
+                				<tr>
+                					<td>内容介绍</td>
+                					<td colspan="2">解析今日盘面,解读实时信息，传授股市技巧</td>
+                				</tr>
+                				<tr>
+                					<td>20:00-21:00(时间不定)</td>
+                					<td>行业研报</td>
+                					<td>特邀嘉宾</td>
+                				</tr>
+                				<tr>
+                					<td>内容介绍</td>
+                					<td colspan="2">行业研究专题，解构热点行业上下游产业链，深度挖掘投资机会</td>
+                				</tr>
+                				<tr>
+                					<td>20:00-21:00(时间不定)</td>
+                					<td>操盘有道</td>
+                					<td>特邀嘉宾</td>
+                				</tr>
+                				<tr>
+                					<td>内容介绍</td>
+                					<td colspan="2">个股分析解答,结合实时行情提供买卖等专业意见,把握利润减少损失</td>
+                				</tr>
+                				<tr>
+                					<td>20:00-21:00(时间不定)</td>
+                					<td>名师有约</td>
+                					<td>特邀嘉宾</td>
+                				</tr>
+                				<tr>
+                					<td>内容介绍</td>
+                					<td colspan="2">大咖专题分享，带你认知私募、游资、牛散的操盘理念与手法，洞悉实战技巧</td>
+                				</tr>
+                			</tbody>
+                		</table>
+                	</div>
+                </div>
+
+                <!-- 提问聊天框 -->
+                <div class="questionTitle" v-if="showQue" :class="showQueTxt?'show':''">
+                    <div class="content"><div class="curr-tab"><i class="red-pen"></i>提问</div></div>
+                    <div class="warm">
+                        <img src="img/icon.png" alt="">
+                        <span>发送您的提问，等待教师解答，敬请留意</span>
+                    </div>
+                </div>
+                <ul id="questionListBox" v-if="showQue" class="questionListBox" :class="showQueTxt?'show':''">
+                    <!--<div class="load-more" v-show="downEnd==false">
+                        <span v-show="downFlag === false">上拉加载更多</span>
+                        <span v-show="downFlag === true">加载中……</span>
+                    </div>-->
+                    <!--<div class="load-more" v-show="downEnd==true"><span>已全部显示</span></div>-->
+                    <li v-for="que in queTxt" :key="que.id" :class="que.to_type=='2' ? 'left': 'right'">
+                        <div class="u--header">
+                            <img :src="que.from.avatar">
+                        </div>
+                        <div class="box">
+                            <div class="name">
+                                <span class="nickname">{{que.from.nickname}}</span>
+                                <span class="time">{{que.time}}</span>
+                            </div>
+                            <div class="msg" v-html="que.msg"></div>
+                        </div>
+                    </li>
+                </ul>
+
+                <!-- 提问弹框 -->
+                <template v-show="isLogin">
+                    <div id="questionPop" class="question" :class="showQueTxt?'show':''">
+                        <div id="setbtn" class="setbtn" v-show="chatTab">
+                            <a @click="openQueListBOx" class="active" v-show="isLogin&&!showQueTxt"><i class="icon-help"></i>提问</a>
+                        </div>
+                        <div id="retbtn" class="retbtn" v-show="chatTab">
+                            <a @click="clearQueListBOx" class="active" v-show="showQueTxt"><i class="icon-return"></i>返回</a>
+                        </div>
+                        <div id="queCon" class="que-con" v-show="showQueTxt">
+                            <div id="questionText" class="questionText" contenteditable="true"></div>
+                            <a @click="sedQuestion" class="btn-send">发送</a>
+                        </div>
+                    </div>
+                </template>
+            </div>
+            <!--登录框-->
+            <mt-popup v-model="popupVisible" class="wechatPopup" popup-transition="popup-fade">
+                <div class="wechat">
+                    <span @click="popupVisible = false">×</span>
+                    <h2>微信登录</h2>
+                    <div class="code">
+                        <img :src="dialogHtml" alt="" />
+                    </div>
+                    <p>请长按二维码关注公众号登录</p>
+                </div>
+            </mt-popup>
+            <!-- 提示框 -->
+            <mt-popup v-model="popupVisible2" class="pointPop" popup-transition="popup-fade">
+                <div class="alert-con">
+                    <h2>提&nbsp;&nbsp;&nbsp;&nbsp;示</h2>
+                    <p>{{popupHtml2}}</p>
+                    <div class="alert-btn">
+                        <button @click="popupVisible2 = false">确&nbsp;&nbsp;&nbsp;&nbsp;认</button>
+                    </div>
+                </div>
+            </mt-popup>
+        </div>
+    </body>
+    <script type="text/javascript" src="js/jquery-1.7.2.js"></script>
+    <script>
+        //禁止页面滑动
+        // $('body').on('touchmove', function (event) {
+        //     event.preventDefault();
+        // });
+        
+        new Vue({
+            el: '#index',
+            data: {
+                baseUrl: '', // 域名地址
+                pageUrl: '', // 页面地址
+                wsUrl: '',//websocket地址
+                wxAppId:'',
+                liveTab: false,
+                courseTab: false,
+                chatTab: true,
+                popupVisible: false,
+                popupVisible2: false,
+                dialogHtml: '',
+                popupHtml2: '请先登录',
+                isLogin: false, // 是否登录状态
+                chatList: [],
+                chatListFlag: false,
+                chatList2: [],
+                chatListMaxLen: 1000,//聊天消息集合的最大长度
+                showQueTxt: false,
+                queTxt: [],                 // 提问历史记录
+                quePage: 0,                 // 提问页面,
+                queNextPage: 1,             // 下一页
+                downFlag: false,            // 用来显示是否加载中,
+                downEnd: false,             // 是否到底
+                teacher: [],
+                bodyHeight: document.documentElement.clientHeight,
+                interimVal:document.documentElement.clientHeight,
+                hH: '',
+                moreH: '',
+                cH:'',
+                liveH: 200,//直播区域的高度
+                liveId: 35,
+                livePath: '',
+                liveCover: '',
+                liveStartTime: '',
+                liveEndTime: '',
+                chatMsg: '', // 发送聊天的内容
+                ticket: '', // 检查票据
+                avatar: 'img/avatar.jpg',
+                userId: -1,
+                nickname: '',
+                open_id: '',
+                token: '',
+                clientId: '',
+                intervalName: '',
+                Dom: '',
+                clientH: '',
+                imgTextPage: 1, // 图文消息page
+                imgTextMoreFlag: false,
+                next_page_url: '', // 图文列表下一页路径
+                radioTxt: '',
+                radioStatus: 1, // 直播状态
+                hadSend: false, // 是否已发送聊天
+                noStartFlag: false,//直播未开始状态
+                sendBtnTitle: '发送',//发送按钮标题
+                //replayShow: false   //安卓微信端更换src后显示播放按钮
+                checkLoginTimes: 0,//检查登录次数
+                videoPause: false,
+                ServerMessageList: [], // 服务器推送消息
+                SListNumb: 0,
+                maxShowMeg: 100, // 消息最多显示数
+                showMegID: 0, // 推送最大数
+                showMegIndex: 0, // 当前显示索引
+                clientWidth: 0,//屏幕宽度
+                timeClear: 0, // 定时清空缓存
+                comeNum: 0,//进入的次数
+                showQue: false
+            },
+            mounted: function() {
+                this.baseUrl = getBaseUrl();
+                this.pageUrl = getPageUrl();
+                this.wsUrl = getWsUrl();
+				this.wxAppId = getWxAppId();
+                this.chatListMaxLen = getChatListMaxLen();//聊天消息条数最大长度
+                this.clientWidth = document.documentElement.clientWidth;
+                // this.isPc();
+                // 挂载resize事件
+                var that = this;
+                window.onresize = function() {
+                    that.bodyHeight = document.documentElement.clientHeight;
+                }
+                // 初始高
+                this.moreH = (this.bodyHeight - 297) + 'px';
+                this.hH = (this.bodyHeight - 392) + 'px';
+                this.cH = (this.bodyHeight -240) +'px' ;
+                var url = location.href;
+                var token = url.split('token=')[1];
+                if (token != undefined) {
+                    localStorage.clear(); // @modified by 吴辉 3001378341@qq.com 2017-04-05 10:33:40
+                    this.token = token;
+                    this.getUserInfo();
+                } else {
+                	if(this.isWx()) {
+                		location.href = wxUrl;
+                	}
+                }
+                this.connect();
+                this.ticket = localStorage.getItem('ticket');
+                this.clientId = localStorage.getItem('clientId');
+                if (localStorage.getItem('token') != null) {
+                    this.avatar = localStorage.getItem('avatar');
+                    this.userId = localStorage.getItem('userId');
+                    this.nickname = localStorage.getItem('nickname');
+                    this.open_id = localStorage.getItem('open_id');
+                    this.token = localStorage.getItem('token');
+                    this.isLogin = true;
+                }
+                // localStorage.setItem("ServerMessage",'[]');
+                for (var i = 0; i < 100; i++) {
+                    var tempLS = localStorage.getItem('ServerMessage'+i);
+                    if (tempLS != null) {
+                        localStorage.removeItem('ServerMessage'+i);
+                    }else{
+                        break;
+                    }
+                }
+                var _that = this;
+                var showIndex;
+                setInterval(function () {
+                    if(_that.timeClear == 199 && showIndex == 0){
+                        _that.timeClear = 0;
+                    }
+                    if(_that.timeClear == 200 && showIndex != 0){
+                        _that.timeClear = 0;
+                    }
+                    if( _that.showMegIndex <= _that.showMegID ){
+                        showIndex = parseInt(_that.showMegIndex / 200);
+                        var tempList = JSON.parse(localStorage.getItem("ServerMessage" + showIndex));
+                        // console.log(_that.showMegIndex+'\t'+_that.showMegID+'\t'+showIndex);
+                        if(tempList ==null){return}
+                        if(_that.timeClear < tempList.length){
+                            _that.onmessage(tempList[_that.timeClear]);
+                            _that.timeClear ++;
+                        }
+                        _that.showMegIndex ++;
+                    }
+                },50);
+                
+                this.$nextTick(function() {
+                	//加载直播源
+		            var liveScript = document.createElement("script");
+			        liveScript.type = "text/javascript";
+			        liveScript.setAttribute('src', 'http://58jinrongyun.com/helper/room_player.js?r=18456&id=dyyplayer');
+			        document.body.parentNode.appendChild(liveScript);
+			        
+			        //延时取到直播区域的高度
+			        var that = this;
+		        	setTimeout(function(){
+						that.liveH = document.getElementById('videoBox').offsetHeight;
+						that.changeHeight();
+					}, 1500)
+			        
+                })
+            },
+            watch: {
+                bodyHeight: 'getHeight',
+                chatList2: 'setMaxLength'
+            },
+            methods: {
+            	//高度调整
+            	changeHeight: function() {
+            		//苹果系统
+            		if(this.sysBrowser() == 'IOS') {
+                		this.changeIOSHeight();
+                	}
+            		//安卓系统
+			        if(this.sysBrowser() == 'Android') {
+			        	//发送按钮
+			            document.getElementById('sendBtn').style.height = '35px';
+			        }
+            	},
+            	//苹果手机下  改变高度
+            	changeIOSHeight: function() {
+            		var h1 = this.liveH + 40; //直播区+头部的高度
+        			var h2 = h1 + 35 + 22;//直播区+头部+tab标题+警告信息的高度
+        			var h3 = h2 + 95;//直播区+头部+tab标题+警告信息+消息发送区域的高度
+        			
+            		this.cH = (this.interimVal - h1) +'px';
+	                this.moreH = (this.interimVal - h2) + 'px'; //课程表和主播厅区域的高度
+	                this.hH = (this.interimVal - h3) + 'px'; //聊天区域的高度
+            	},
+            	//安卓手机下  改变高度
+            	changeAndroidHeight: function(val) {
+            		if(val > this.interimVal) {
+						
+						var h1 = this.liveH + 40 + 80; //直播区+头部的高度
+	        			var h2 = h1 + 35 + 22;//直播区+头部+tab标题+警告信息的高度
+	        			var h3 = h2 + 95;//直播区+头部+tab标题+警告信息+消息发送区域的高度
+	        			this.cH = (this.bodyHeight - h1) +'px';
+		                this.moreH = (this.bodyHeight - h2) + 'px'; //课程表和主播厅区域的高度
+		                this.hH = (this.bodyHeight - h3) + 'px'; //聊天区域的高度
+	        			
+		                document.getElementById('index').style.marginTop = '40px';
+						document.getElementById('send').style.bottom = '40px';
+		                //提问样式
+		                document.getElementById('setbtn').style.bottom = 'calc(100% + 47px)';
+		                document.getElementById('retbtn').style.top = '-37px';
+		                document.getElementById('queCon').style.bottom = '42px';
+		                
+					} else {
+						var h1 = this.liveH + 40; //直播区+头部的高度
+	        			var h2 = h1 + 35 + 22;//直播区+头部+tab标题+警告信息的高度
+	        			var h3 = h2 + 95;//直播区+头部+tab标题+警告信息+消息发送区域的高度
+						this.cH = (this.bodyHeight - h1) +'px';
+		                this.moreH = (this.bodyHeight - h2) + 'px'; //课程表和主播厅区域的高度
+		                this.hH = (this.bodyHeight - h3) + 'px'; //聊天区域的高度
+						
+						document.getElementById('index').style.marginTop = '0px';
+						document.getElementById('send').style.bottom = '0px';
+		                //提问样式
+		                document.getElementById('setbtn').style.bottom = 'calc(100% + 5px)';
+		                document.getElementById('retbtn').style.top = '0px';
+		                document.getElementById('queCon').style.bottom = '0px';
+		                
+					}
+            	},
+                /* 当前是 手机端 还是PC端 */
+                isPc: function() {
+                    var userAgentInfo = navigator.userAgent.toLowerCase();
+                    var Agents = new Array("android", "iphone", "symbianOS", "windows phone", "ipad", "ipod");
+                    var flag = true;
+                    for (var v = 0; v < Agents.length; v++) {
+                        if (userAgentInfo.indexOf(Agents[v]) > 0) {
+                            flag = false;
+                            break;
+                        }
+                    }
+                    if(flag) {
+                        //pc端直播室路径
+                        location.href = this.pageUrl + '/pc/index.html';
+                    } else {
+                        //手机端直播室路径
+                        location.href = this.pageUrl + '/h5/index.html';
+                    }
+                },
+                getHeight: function(val) {
+                	this.bodyHeight = val;
+	                this.$nextTick(function() {
+	                	if(this.sysBrowser() == 'Android') {
+	                		this.changeAndroidHeight(val);
+	                	}
+	                })
+                },
+                /**
+                 * 预加载视频动画
+                 * 注: 没有找到 JS 监控网络传输速度 的案例, 所以这里用了一个模拟值完成加载效果!
+                 * 加载 5秒后 canvas 画视频, 默认让用户等待 5秒看视频
+                 */
+                preloading: function() {
+                    this.addLoad();
+                    var v = this;
+                    setTimeout(function() {
+                        v.removeLoad();
+                    }, 1500);
+                },
+                addLoad: function() {
+                    var liveBox = document.getElementById("live-box");
+                    liveBox.className = 'live load';
+                },
+                removeLoad: function() {
+                    var liveBox = document.getElementById("live-box");
+                    liveBox.className = 'live';
+                },
+                // 是否是在微信端打开 
+                isWx: function() {
+                    var ua = navigator.userAgent.toLowerCase();
+                    if (ua.match(/MicroMessenger/i) == "micromessenger") {
+                        return true;
+                    } else {
+                        return false;
+                    }
+                },
+                // TAB切换
+                viewTab: function(n) {
+                    if (n == 'live') {
+                       	this.liveTab = true;
+                    	this.chatTab = false;
+                    	this.courseTab = false;
+                    	if(this.chatList==''){
+		                	this.getImgTextList();//图文消息
+		                }
+                    }
+                    if (n == 'chat') {
+                        this.liveTab = false;
+                    	this.chatTab = true;
+                    	this.courseTab = false;
+                    }
+                    if(n == 'course') {
+                    	this.liveTab = false;
+                    	this.chatTab = false;
+                    	this.courseTab = true;
+                    }
+                },
+                //获得当前时间
+                getCurrTime:function() {
+                    var currDate = new Date();
+                    var h = currDate.getHours() * 60 * 60 * 1000; //当前时间-时钟的毫秒数
+                    var m = currDate.getMinutes() * 60 * 1000; //当前时间-分钟的毫秒数
+                    var s = currDate.getSeconds() * 1000; //当前时间-秒钟的毫秒数
+                    var currTime = h + m + s;  //当前时间
+                    return currTime;
+                },
+                /**
+                 * 根据时间段取直播liveId
+                 * @param {Object} liveSchedule  时间段
+                 */
+				changeLiveId: function(liveSchedule) {
+ 					var currTime = this.getCurrTime(); 
+ 					
+					for(i in liveSchedule) {
+						var obj = liveSchedule[i];
+						
+						var st = (obj[0] * 60 * 60 * 1000) + (obj[1] * 60 * 1000);
+						var et = (obj[2] * 60 * 60 * 1000) + (obj[3] * 60 * 1000);
+						var liveId = obj[4];
+						//在直播时间内
+						if(currTime > st && currTime <= et) {
+	                        this.liveId = liveId;
+	                        this.getLiveStatus(st, et);
+	                        return;
+	                    } 
+	                    //小于开始时间
+	                    if(currTime < st) { 
+	                    	this.getLiveStatus(st, et);
+	                    }
+	                    //最后一个直播时间段的结束时间  小于当前时间
+	                    if(liveId == 37 && currTime > et) {
+	                    	this.getLiveStatus(st, et);
+	                    }
+					}
+				},
+                // 直播播放
+                livePlay: function() {
+                    var currTime = this.getCurrTime();
+                    /**
+                     *  根据时间，加载liveId
+                     *  参数值： 开始时间-时， 开始时间-分，结束时间-时， 结束时间-分，直播ID
+                     */
+                    var liveSchedule = {
+               			'time1': [8,30,12,00,35],
+               			'time2': [13,30,18,10,36],
+               			'time3': [19,00,24,00,37]
+           			};
+                    this.changeLiveId(liveSchedule);
+                    //加入直播聊天室
+                	this.joinLiveChat();
+                },
+                //加入直播聊天室
+		        joinLiveChat: function() {
+		        	var url = this.baseUrl + '/api/user/joinLiveRoom/' + this.liveId;
+		        	var params = {
+		        		'client_id': this.clientId
+		        	}
+		        	var that = this;
+		        	axios.post(url, params)
+		        	.then(function(res) {
+	                    var resData = res.data;
+	                    if (resData.success == undefined) {
+//	                    	that.$alert(resData.error.message);
+							that.$alert(resData.error.message, '提示', {
+					          	confirmButtonText: '确定',
+					          	callback: function(res) {
+									location.reload();
+					          	}
+					        });
+	                        return;
+	                    }
+	                }, function(error) {
+	                    // console.log('error');
+	                });
+		        },
+                // 判断浏览器
+                sysBrowser: function() {
+                    // 这是Android平台下浏览器
+                    if (/android/i.test(navigator.userAgent)) {
+                        return 'Android';
+                    }
+                    if (/iPhone|mac|iPod|iPad/i.test(navigator.userAgent)) {
+                        return 'IOS';
+                    }
+                },
+                //画入直播
+                drawLive: function(c, ctx, v) {
+                	var newcanvas = document.createElement('canvas');
+            		var newctx = newcanvas.getContext("2d");
+            		
+            		ctx.clearRect(0,0,300,150);
+            		newctx.clearRect(0,0,c.width,c.height);
+            		
+            		newctx.drawImage(v,0,0,c.width,c.height);
+            		ctx.drawImage(newcanvas,0,0);
+                },
+                // 获取图文消息列表
+                getImgTextList: function() {
+                	this.chatListFlag = true;
+                    var url = this.baseUrl + '/api/live/message/' + this.liveId;
+                    var params = {
+                        'token': this.token,
+                        'page': this.imgTextPage
+                    }
+                    var that = this;
+                    axios.get(url, {
+                            params: params
+                        })
+                        .then(function(res) {
+                            var resData = res.data;
+                            if (resData.success == undefined) {
+                                return;
+                            }
+                            var chatList = resData.success;
+                            that.next_page_url = resData.success.next_page_url;
+                            // console.log(that.next_page_url);
+                            var len = chatList.length;
+                            if (len > 0) {
+                                var list = [];
+                                for (var i = 0; i < chatList.length; i++) {
+                                    var message = chatList[i].content;
+                                    var a = {
+                                        'teacherId': chatList[i].teacher.id,
+                                        // 'teacherAvatar': chatList[i].teacher.avatar,
+                                        'teacherName': chatList[i].teacher.nickname,
+                                        'createdAt': chatList[i].created_at.substring(16,0),
+                                        'message': message
+                                    }
+                                    list.push(a);
+                                }
+                                // if (that.next_page_url != null) {
+                                //     that.imgTextPage++;
+                                //     that.getImgTextList();
+                                //     that.imgTextMoreFlag = true;
+                                // }
+                                for (var i = 0; i < list.length; i++) {
+                                    that.chatList.push(list[i])
+                                }
+                            }
+                            // 图片放大效果
+                            var allLen = resData.success.total; // 总共条数
+                            that.$nextTick(function() {
+                                if (allLen == (that.chatList.length)) {
+                                    var len = $('#detail p p img').length;
+                                    var Img = $('#detail p p img');
+                                    Img.wrap('<a target="_blank"></a>');
+                                    var aClub = $('#detail p p a');
+                                    $("#detail p p a").addClass("swipebox");
+                                    for (var i = 0; i < len; i++) {
+                                        var imgSrc = Img[i].src;
+                                        aClub[i].href = imgSrc;
+                                    }
+                                }
+                            })
+                        }, function(res) {
+                            // console.log('error');
+                        });
+                },
+                // 校验发送内容
+                checkChat: function(e,chatMsg){
+                    if (e != null && e.keyCode == 13) {
+                        // e.returnValue = false;
+                        e.cancelBubble=true;
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+                    var that =this;
+                    chatMsg = chatMsg.replace(/<\/br>/g,"") // 去掉所有的&nbsp;
+                    chatMsg = chatMsg.replace(/&nbsp;/g,"") // 去掉所有的&nbsp;
+                    chatMsg = chatMsg.replace(/<div><br><\/div>/g, "");
+                    chatMsg = chatMsg.replace(/<p><br><\/p>/g, "");
+                    chatMsg = chatMsg.replace(/<p> <\/p>/g, "");
+                    chatMsg = chatMsg.replace(/<p><\/p>/g, "");
+                    chatMsg = chatMsg.replace(/<p>&nbsp;<\/p>/g, "");
+                    if (chatMsg == null || chatMsg == ' ' || chatMsg == '') {
+                        this.popupVisible2 = true;
+                        this.popupHtml2 = '发送内容不能为空';
+                        return false;
+                    }
+                    var reg = /<img[^>]*>/gi;                                   // 字符串中含有img标签
+                    var chatImgArr = chatMsg.match(reg);
+                    var textMsg = '';                                           // 聊天字符长度
+                    if (chatImgArr != null) {
+                        if (chatImgArr.length > 1) {
+                            this.popupVisible2 = true;
+                            this.popupHtml2 = '每次只能发送一张图片！';
+                            return false;
+                        }
+                        var chatTextArr = chatMsg.split(chatImgArr[0]);
+                        for (var i = 0; i < chatTextArr.length; i++) {
+                            textMsg += chatTextArr[i];
+                        }
+                    } else {
+                        textMsg = chatMsg;
+                    }
+                    var len = this.getRealLen(textMsg);
+                    if (len > 280) {
+                        this.popupVisible2 = true;
+                        this.popupHtml2 = '发送内容过长！';
+                        return false;
+                    }
+                },
+                /* 当前时间 */
+                newTime: function(){
+                    var date = new Date();
+                    var year = date.getFullYear();
+                    var month = date.getMonth() + 1;
+                    var day = date.getDate();
+                    var hour = date.getHours();
+                    var minute = date.getMinutes();
+                    var second = date.getSeconds();
+                    if ( month < 10) month = '0' + month;
+                    if ( day < 10) day = '0' + day;
+                    if ( hour < 10) hour = '0' + hour;
+                    if ( minute < 10) minute = '0' + minute;
+                    if ( second < 10) second = '0' + second;
+                    var currTime = year + '-' + month + '-' + day + ' ' + hour + ':' + minute;
+                    return currTime;
+                },
+                // 发送提问
+                sedQuestion: function(e) {
+                    var that = this;
+                    var target = document.getElementById('questionListBox');
+                    var quesTxt = document.getElementById('questionText').innerHTML;
+                    quesTxt = quesTxt.replace(/(^\s*)|(\s*$)/g, ""); 
+                    var checkChatFlag = this.checkChat(e, quesTxt);
+                    if(!checkChatFlag && checkChatFlag != undefined) {
+                        return;
+                    }
+                    var url = this.baseUrl + '/api/msg/send/';
+                    var params = {
+                        'token': this.token,
+                        "user_type": 1,
+                        "to": this.teacher.teacherid,
+                        "to_type": "2",
+                        "msg_content": quesTxt
+                    };
+                    axios.post(
+                        url, params
+                    ).then(function(res) {
+                        var resData=res.data;
+                        that.chatMsg = '';
+                        document.getElementById('questionText').innerHTML = '';
+                        if(resData.success==null){
+                            console.log("发送失败");
+                        }else{
+                            // console.log("发送成功");
+                            var obj = {
+                                from: {
+                                    avatar: that.avatar,
+                                    nickname: that.nickname
+                                },
+                                id: that.userId,
+                                to_type: "2",
+                                msg: quesTxt,
+                                time: that.newTime(),
+                            }
+                            that.queTxt.push(obj);
+                        }
+                        that.$nextTick(function() { // 默认出现在底部,查看最新的记录!
+                            target.scrollTop = target.scrollHeight;
+                        });
+                    });
+                },
+                // 打开提问弹框
+                openQueListBOx: function(e){
+                    this.showQueTxt = true;
+                    this.showQue = true;
+                    document.getElementById('myData').style.height = this.moreH;
+                    this.$nextTick(function() {
+                        this.pasteScreenshot('chatText');
+                        this.pasteScreenshot('questionText');
+                        
+                        var that = this;
+                        if(this.queTxt.length == 0) {
+                        	this.getLiveDetail('question');
+                        	setTimeout(function() {
+                        		
+                        	},50)
+                        	
+                        }
+                    })
+                },
+                // 关闭提问弹框
+                clearQueListBOx: function(){
+                    this.showQueTxt = false;
+                    document.getElementById('myData').style.height = this.hH;
+                },
+                // 查询历史提问记录
+                selectQuelist: function(event){
+                    var target = document.getElementById('questionListBox');
+                    var that = this;
+                    if(this.queNextPage!=this.quePage){
+                        this.quePage = this.queNextPage;
+                        var url = this.baseUrl + '/api/msg/getchatdetail/?page='+ this.quePage;
+                        var teacherId = parseInt(this.teacher.teacherid);
+                        var params = {
+		            		"from": teacherId,
+							"from_type": "2",
+							// 'current_page': this.quePage,
+							"token": this.token,
+							'user_type': "1"
+			            }
+                        axios.get(url, {
+                            params: params
+                        }).then(function(res) {
+                            that.downFlag = true;
+                            var callback = res.data.success;
+                            if (callback == undefined) { 
+                            	alert(res.data.error.message);
+                            	return; 
+                            }
+                            var list = [];
+                            for (var i = callback.data.length-1; i >= 0; i--){
+                                var obj = {
+                                    from: {
+                                        avatar: callback.data[i].from.avatar,
+                                        nickname: callback.data[i].from.nickname
+                                    },
+                                    id: callback.data[i].id,
+                                    to_type: callback.data[i].to_type,
+                                    msg: callback.data[i].msg_content,
+                                    time: callback.data[i].created_at
+                                }
+                                list.push(obj);
+                            }
+                            for (var i = list.length-1 ; i >= 0 ; i--) {
+                                that.queTxt.unshift(list[i]);
+                            }
+                            that.$nextTick(function() {
+                                if( that.quePage == 1 ){
+                                    target.scrollTop = target.scrollHeight;
+                                }else{
+                                    target.scrollTop = 40;
+                                }
+                            });
+                            if( callback.current_page == callback.last_page || list.length == 0){
+                                that.downEnd = true; 
+                            }
+                        });
+                    }else{
+                        that.downFlag = false;
+                        target.scrollTop = 20
+                    }
+                    target.addEventListener('scroll',function(){
+                        if( target.scrollTop == 0 && that.downEnd != true ){
+                            that.queNextPage ++;
+                            that.downFlag = false;
+                            that.selectQuelist();
+                        }
+                    });
+                },
+                /* 获取直播详情信息  */
+				getLiveDetail: function(n) {
+					var url = this.baseUrl + '/api/live/pcdetail/' + this.liveId;
+		            var params = {
+		                'client_id': this.clientId
+		            }
+		            var that = this;
+		            axios.get(url, {
+		                params: params
+		            }).then(function(res) {
+		                var successData = res.data.success;
+		                if (successData == undefined) {
+		                	alert(res.data.error.message);
+		                    return false;
+		                }
+		                if(n == 'live') {
+		                	//直播信息
+			                var livePath = successData.m3u8_pc;
+			                that.liveStartTime = successData.start_time; //直播开始时间
+			                that.liveEndTime = successData.end_time; //直播结束时间
+			                that.livePath = livePath;  //直播地址
+			                that.liveCover = successData.page_cover; //封面图
+		                }
+		                if(n == 'question') {
+		                	//老师信息
+			                var teacherInfo = successData.teacher;
+			                that.teacher.teacherid = teacherInfo.id;
+			                that.teacher.title = teacherInfo.title;
+			                that.teacher.nickname = teacherInfo.nickname;
+			                that.teacher.real_name = teacherInfo.real_name;
+			                that.teacher.avatar = teacherInfo.avatar;
+			                that.teacher.description = teacherInfo.description;
+			                
+			                that.selectQuelist(); //历史提问
+		                }
+		            });
+				},
+				/*
+				 * 判断直播状态
+				 * liveStartTime  开始时间
+				 * liveEndTime  结束时间
+				 */
+				getLiveStatus: function(startTime, endTime) {
+					var currTime = this.getCurrTime();
+	                // 不在直播时间段内 ，都为未开始 
+	                if (currTime < startTime) {
+	                	this.noStartFlag = true;
+	                    this.radioTxt = "本次直播还未开始，先与大家讨论一下吧！";
+	                    var timeDiff = startTime - currTime;
+	                    setTimeout(function() {
+	                       window.location.reload();
+	                    }, timeDiff);
+	                }
+	                // 在直播时间内
+	                if (currTime > startTime && currTime < endTime) {
+	                	this.noStartFlag = false;
+	                    var timeDiff1 = endTime - currTime;
+	                    setTimeout(function() {
+	                        window.location.reload();
+	                    }, timeDiff1);
+	                }
+	                if (currTime > endTime) {
+	                	this.noStartFlag = true;
+	                    this.radioTxt = "本次直播还未开始，先与大家讨论一下吧！";
+	                }
+				},
+                // 加载更多图文消息
+                /*viewmore: function() {
+                    var domH = this.clientH;
+                    this.Dom = document.getElementById('anchorHall');
+                    var domScrollH = this.Dom.scrollHeight;
+                    var domScrollTop = this.Dom.scrollTop + 352;
+                    var scrollArea = parseInt(domScrollH - domH);
+                    console.log(domScrollTop);
+                    console.log(scrollArea)
+                    console.log(domScrollTop == scrollArea);
+                    console.log(this.next_page_url)
+                    if (domScrollTop == scrollArea) {
+                        if (this.next_page_url != null) {
+                            this.imgTextPage++;
+                            this.getImgTextList();
+                            this.imgTextMoreFlag = true;
+                        }
+                    }
+                },*/
+                // 检查是否登录
+                checkLogin: function() {
+                    var url = this.baseUrl + '/api/user/checkLogin';
+                    var params = {
+                        'ticket': this.ticket
+                    };
+                    
+                    var that = this;
+                    axios.get(url, {
+                        params: params
+                    }).then(function(res) {
+                        if (res == undefined) {
+                            return;
+                        }
+                        var successData = res.data.success;
+                        if (successData == null) {
+                        	that.checkLoginTimes++;   //检查次数加1
+                            return;
+                        }
+                        that.popupVisible = false;
+                        that.avatar = successData.avatar;
+                        that.userId = successData.id;
+                        that.nickname = successData.nickname;
+                        that.open_id = successData.open_id;
+                        that.token = successData.token;
+                        localStorage.setItem('avatar', that.avatar);
+                        localStorage.setItem('userId', that.userId);
+                        localStorage.setItem('nickname', that.nickname);
+                        localStorage.setItem('open_id', that.open_id);
+                        localStorage.setItem('token', that.token);
+                        that.isLogin = true;
+                        clearInterval(that.intervalName);
+                    });
+                },
+                // 扫描二维码登录
+                codeLogin: function() {
+                    var url = this.baseUrl + '/api/user/wxQrcodeLogin/'+this.wxAppId; // @modified by 吴辉 3001378341@qq.com 2017-04-11 09:34:19
+                    var that = this;
+                    axios.get(url)
+                        .then(function(res) {
+                            var successData = res.data.success;
+                            if (successData == null) {
+                                return;
+                            }
+                            that.popupVisible = true;
+                            that.dialogHtml = successData.qrcode;
+                            that.ticket = successData.ticket;
+                            localStorage.setItem('ticket', that.ticket);
+                            if (that.ticket != '') {
+                                // that.intervalName = setInterval(that.checkLogin, 3000);
+								that.intervalName = setInterval(function() {
+									if(that.checkLoginTimes < 5) {
+										that.checkLogin();
+									} else {
+										that.popupVisible = false;
+										clearInterval(that.intervalName);
+		                				that.checkLoginTimes = 0;//清空检查登录次数
+									}
+								}, 3000);
+                            }
+                        }, function(res) {
+                            // error 
+                            that.popupVisible2 = true;
+                            that.popupHtml2 = '登录失败';
+                        })
+                },
+                // 退出登录
+                editLogin: function() {
+                    localStorage.clear();
+                    // @modified by 吴辉 3001378341@qq.com 2017-04-05 10:45:44
+                    // location.reload();
+                    location.href = location.origin + location.pathname;
+                },
+                // 添加礼物
+                addGift: function(giftName) {
+                    var chatMsg = '[' + giftName + ']';
+                    this.sendChat(null, chatMsg);
+                },
+                // 获取字符串的实际长度
+                getRealLen: function(str) {
+                    var realLength = 0,
+                        len = str.length,
+                        charCode = -1;
+                    for (var i = 0; i < len; i++) {
+                        charCode = str.charCodeAt(i);
+                        if (charCode >= 0 && charCode <= 128) realLength += 1;
+                        else realLength += 2;
+                    }
+                    return realLength;
+                },
+                // 通过 Token 获取当前用户信息
+                getUserInfo: function() {
+                    var url = this.baseUrl + '/api/user/home';
+                    var params = {
+                        'token': this.token
+                    };
+                    var that = this;
+                    axios.get(url, {
+                            params: params
+                        })
+                        .then(function(res) {
+                            var data = res.data.success;
+                            if (data == undefined) {
+                                alert(res.data.error.message);
+                                return;
+                            }
+                            var userInfo = data.user;
+                            localStorage.setItem('mobile', userInfo.mobile);
+                            localStorage.setItem('nickname', userInfo.nickname);
+                            localStorage.setItem('avatar', userInfo.avatar);
+                            localStorage.setItem('token', that.token);
+                            
+                            that.avatar = userInfo.avatar;
+                            that.userId = userInfo.id;
+                            that.nickname = userInfo.nickname;
+                            that.isLogin = true;
+                        }, function(res) {
+                            // error callback
+                        });
+                },
+                setMaxLength: function () {
+                    if( this.chatList2.length > this.maxShowMeg ) this.chatList2.shift();
+                },
+                // 推送消息存入浏览器缓存, 不管推送多少条都优先纯如缓存
+                showServerMessage: function (e) {
+                    var tempStr = '';
+                    var data = eval("(" + e.data + ")");
+                    data["id"] = this.showMegID ++; // 给缓存记录添加ID小标
+                    if( this.showMegID % 200 ==0){
+                        this.SListNumb ++;
+                        this.ServerMessageList = [];
+                    }
+                    this.ServerMessageList.push(data);
+                    tempStr = JSON.stringify(this.ServerMessageList);
+                    localStorage.setItem("ServerMessage"+ this.SListNumb, tempStr);
+                },
+                /**
+                 * 显示消息 ( 当前显示下标 )
+                 * 如 当前显示下标 大于 缓存长度, 既已经显示最后一条
+                 * 如 当前显示下标 小于 缓存长度, 既可取缓存中一条数据显示
+                 */
+                // showMessage: function( _index ){
+                //     var lists = JSON.parse(localStorage.getItem("ServerMessage"));
+                //     if(lists != null){
+                //         if( _index < lists.length){
+                //             this.showMegIndex++;
+                //             this.onmessage(lists[_index]);
+                //         }else{
+                //             return;
+                //         }
+                //     }
+                // },
+                //连接服务端
+                connect: function() {
+                    // 创建websocket
+                    ws = new WebSocket(this.wsUrl);
+                    //  ws.onopen = onopen;
+                    // 当有消息时根据消息类型显示不同信息
+                    // ws.onmessage = this.onmessage;
+                    ws.onmessage = this.showServerMessage;
+                    var that = this;
+                    ws.onclose = function() {
+                        console.log("连接关闭，定时重连");
+                        that.connect();
+                    };
+                    ws.onerror = function() {
+                        console.log("出现错误");
+                    };
+                },
+                // 连接建立时发送登录信息
+                onopen: function() {
+                    // 登录
+                    var login_data = "连接成功";
+                    ws.send(login_data);
+                },
+                // 服务端发来消息时
+                // onmessage: function(e) {
+                //     var data = eval("(" + e.data + ")");
+                //     switch (data['t']) {
+                onmessage: function(data) {
+                    switch (data.t) {
+                        // 客户端编号
+                        case 'join':
+                            this.clientId = data['cid']; // 客户端编号
+                            localStorage.setItem('clientId', this.clientId);
+                            this.livePlay();
+                            break;
+                        // 礼物赠送消息
+                        case 'gift':
+                            var obj = {
+                                giftId: data['gift_id'],
+                                giftName: data['gift_name'],
+                                giftAvatar: data['gift_avatar'],
+                                giftNumber: data['gift_number'],
+                                userId: data['user_id'],
+                                userName: data['user_name'],
+                                // userAvatar: data['user_avatar'], // 头像
+                                createdAt: data['created_at'] // 时间
+                            };
+                            this.pushChat(obj, 'chat');
+                            break;
+                        // 聊天消息
+                        case 'chat':
+                            var flowerNumber = 0,
+                                clapNumber = 0,
+                                praiseNumber = 0;
+                            var message = data['m'];
+                            if (message != null) {
+                                flowerNumber = message.split('鲜花').length - 1;
+                                clapNumber = message.split('鼓掌').length - 1;
+                                praiseNumber = message.split('点赞').length - 1;
+                                message = message.replace(/鲜花/g, '<img src="img/icon-flower.png" class="h18"/>');
+                                message = message.replace(/鼓掌/g, '<img src="img/icon-clap.png" class="h18"/>');
+                                message = message.replace(/点赞/g, '<img src="img/icon-praise.png" class="h18"/>');
+                                message = message.replace(/]/g, '');
+                                message = message.replace(/[[]/g, '');
+                            }
+                            var obj = {
+                            	chatId: data['cid'],
+		                        userId: data['uid'],
+		                        userName: data['n'],
+		                        createdAt: data['c'].substring(0,16), 					// 时间
+		                        message: message,
+		                        flowerNumber: flowerNumber,
+		                        clapNumber: clapNumber,
+		                        praiseNumber: praiseNumber
+                            };
+                            this.pushChat(obj, 'chat');
+                            break;
+                        // 图文消息
+                        case 'message':
+                            var obj = {
+                                // teacherId: data['teacher_id'],
+                            	teacherName: data['n'],
+		                        createdAt: data['c'].substring(0,16), 					// 时间
+		                        message: data['m'],
+		                        imgList: data['i']
+                            };
+                            var that=this;
+							if(this.chatList==''){
+								that.getImgTextList();
+							}else{
+								that.pushChat(obj, 'live');
+							}
+                            var objTeac = {
+                                chatId: data['cid'],
+		                        // userId: data['teacher_id'],
+								userId: -1,
+		                        userName: '[房管]直播助理',
+		                        createdAt: data['c'].substring(0,16), 					// 时间
+		                        message: data['m']
+                            };
+                            this.pushChat(objTeac, 'chat');
+                            break;
+                        // 私信消息
+		                case 'queTxt':
+		                	var obj = {
+		                        chatId: data['chat_id'],
+		                        userId: data['user_id'],
+		                        userName: data['user_name'],
+		                        userAvatar: data['user_avatar'], 				// 头像
+								to_type: '1',									//
+								msg: data['message'],							// 消息
+								time: data['created_at'], 						// 时间
+							}
+		                	this.pushChat(obj,'queTxt');
+		                	break;
+                        // 更换直播源
+                        case 'change_uri':
+                            var obj = {
+                                message: data['message']
+                            };
+                            this.pushChat(obj);
+                            break;
+                        // 在线人数
+                        case 'online_no':
+                            this.onLineNum = data['number']
+                            break;
+                    }
+                    // 图片放大
+                    this.$nextTick(function() {
+                        var len = $('#detai p p img').length;
+                        var Img = $('#detai p p img');
+                        Img.wrap('<a target="_blank"></a>');
+                        var aClub = $('#detai p p a');
+                        $("#detai p p a").addClass("swipebox");
+                        for (var i = 0; i < len; i++) {
+                            var imgSrc = Img[i].src;
+                            aClub[i].href = imgSrc;
+                        }
+                    });
+                },
+                // 发言
+                sendChat: function(e, chatMsg) {
+                    if(chatMsg == null) {
+                        chatMsg = document.getElementById('chatText').innerHTML;
+                        chatMsg = chatMsg.replace(/(^\s*)|(\s*$)/g, ""); // 去掉字符串左右两端空格
+                        this.chatMsg = chatMsg;
+                        document.getElementById('chatText').innerHTML = '';
+                    }
+                    if (this.token == '') {
+                        this.popupVisible2 = true;
+                        this.popupHtml2 = '请先登录！';
+                        return;
+                    }
+                    if (this.hadSend) {
+                        this.popupVisible2 = true;
+                        this.popupHtml2 = '每次发言需间隔10S';
+                        return;
+                    }
+                    if (chatMsg == null || chatMsg == '') {
+                        this.popupVisible2 = true;
+                        this.popupHtml2 = '发送内容不能为空！';
+                        return;
+                    }
+                    var reg = /<img[^>]*>/gi; // 字符串中含有img标签
+                    var chatImgArr = chatMsg.match(reg);
+                    var textMsg = '';
+                    if(chatImgArr != null) {
+                        if (chatImgArr.length > 1) {
+                            this.popupVisible2 = true;
+                            this.popupHtml2 = '每次只能发送一张图片！';
+                            return;
+                        }
+                        var chatTextArr = chatMsg.split(chatImgArr[0]);
+                         // 字符长度
+                        for (var i = 0; i < chatTextArr.length; i++) {
+                            textMsg += chatTextArr[i];
+                        }
+                    }
+                    
+                    var len = this.getRealLen(textMsg);
+                    if (len > 280) {
+                        this.popupVisible2 = true;
+                        this.popupHtml2 = '发送内容过长！';
+                        return;
+                    }
+                    var url = this.baseUrl + '/api/live/chat/send/' + this.liveId;
+                    var params = {
+                        'token': this.token,
+                        'client_id': this.clientId,
+                        'content': chatMsg
+                    };
+                    var that = this;
+                    
+                    var i = 10;//10秒倒计时
+                    that.sendBtnTitle = i + 's';
+                    setInterval(function() {
+                        i--;
+                        if(i == 0) {
+                            that.sendBtnTitle = '发送';
+                        } 
+                        if(i > 0) {
+                            that.sendBtnTitle = i + 's';
+                        }
+                        
+                    }, 1000);
+                    that.hadSend = true;
+                    setTimeout(function() {
+                        that.hadSend = false;
+                    },10000);
+                    
+                    axios.get(
+                        url, {params: params}
+                    ).then(function(res) {
+                        // success callback
+                        var resData = res.data;
+                        if (resData.success == undefined) {
+                        	that.popupVisible2 = true;
+                        	that.popupHtml2 = resData.error.message;
+                        	return;
+                        }
+                        var date = new Date();
+                        var year = date.getFullYear();
+                        var month = date.getMonth() + 1;
+                        var day = date.getDate();
+                        var hour = date.getHours();
+                        var minute = date.getMinutes();
+                        var second = date.getSeconds();
+                        if (month < 10) {
+                            month = '0' + month;
+                        }
+                        if (day < 10) {
+                            day = '0' + day;
+                        }
+                        if (hour < 10) {
+                            hour = '0' + hour;
+                        }
+                        if (minute < 10) {
+                            minute = '0' + minute;
+                        }
+                        if (second < 10) {
+                            second = '0' + second;
+                        }
+                        var currTime = year + '-' + month + '-' + day + ' ' + hour + ':' + minute;
+                        var obj = {
+                                myself: true,
+                             // userAvatar: that.avatar, // 头像
+                                createdAt: currTime, // 时间
+                                message: chatMsg,
+                                userName: that.userName
+                            }
+                        that.chatMsg = '';
+                        document.getElementById('chatText').innerHTML = '';
+                    }, function(res) {
+                        // error callback
+                    });
+                },
+                pushChat: function(obj, type) {
+                    if (type == 'live') {
+                        this.chatList.push(obj);
+                    }
+                    if (type == 'chat') {
+                        this.chatList2.push(obj);
+                        if(this.chatList2.length > this.chatListMaxLen) {
+		                	this.chatList2.shift(); //超过最大长度，删除集合中第一条
+		                }
+                    }
+                    this.$nextTick(function() {
+                        var myData = document.getElementById('myData');
+                        myData.scrollTop = myData.scrollHeight;
+                    })
+                },
+                /* 粘贴截图 */
+                pasteScreenshot: function(tempID) {
+                    var chatText = document.getElementById(tempID);
+                    var baseUrl = this.baseUrl;
+                    var imgReader = function(item) {
+                        var blob = item.getAsFile(),
+                            reader = new FileReader();
+                        reader.onload = function(e) {
+                            var fileResult = e.target.result;
+                            var url = baseUrl + '/api/fileupload/image';
+                            var params = {
+                                'token': localStorage.getItem('token'),
+                                'image': fileResult
+                            };
+                            var that = this;
+                            axios.post(url, params).then(function(res) {
+                                var resData = res.data;
+                                if (resData.error != undefined) {
+                                    that.$message.error(resData.error.message);
+                                    return;
+                                }
+                                var imgSrc = resData.success;
+                                var img = document.createElement("img");
+                                img.setAttribute('src', imgSrc);
+                                chatText.appendChild(img);
+                            });
+                        };
+                        reader.readAsDataURL(blob);
+                    };
+                    chatText.addEventListener('paste', function(e) {
+                        var clipboardData = e.clipboardData,
+                            i = 0,
+                            items, item, types;
+                        if (clipboardData) {
+                            items = clipboardData.items;
+                            if (!items) {
+                                return;
+                            }
+                            item = items[0];
+                            types = clipboardData.types || [];
+                            for (; i < types.length; i++) {
+                                if (types[i] === 'Files') {
+                                    item = items[i];
+                                    break;
+                                }
+                            }
+                            if (item && item.kind === 'file' && item.type.match(/^image\//i)) {
+                                imgReader(item);
+                            }
+                        }
+                    });
+                }
+            }
+        })
+    </script>
+</html>
